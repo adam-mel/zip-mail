@@ -1,0 +1,6 @@
+{
+  "buildCommand": "pnpm --filter @workspace/temp-mail-app run build",
+  "outputDirectory": "artifacts/temp-mail-app/dist/public",
+  "framework": null,
+  "installCommand": "pnpm install"
+}
