@@ -1,0 +1,1 @@
+- [OpenAPI integer compatibility](openapi-zod-compatibility.md) — this workspace's generated Zod target may reject `zod.int()`; model integral API values as number plus multipleOf: 1.

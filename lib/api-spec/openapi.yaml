@@ -1,0 +1,249 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: sessions
+    description: Temporary mailbox sessions
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /sessions:
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Create a temporary mailbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionInput"
+      responses:
+        "201":
+          description: Temporary mailbox created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sessions/{sessionId}:
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Get mailbox session metadata
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Session metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sessions/{sessionId}/messages:
+    get:
+      operationId: listMessages
+      tags: [sessions]
+      summary: List cached messages and fetch new mail
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Cached inbox messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MessageSummary"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sessions/{sessionId}/messages/{messageId}:
+    get:
+      operationId: getMessage
+      tags: [sessions]
+      summary: Get a cached message body
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Full cached message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sessions/{sessionId}/rotate:
+    post:
+      operationId: rotateSession
+      tags: [sessions]
+      summary: Archive the current mailbox and create a new one
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionInput"
+      responses:
+        "201":
+          description: New temporary mailbox created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 20
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    SessionInput:
+      type: object
+      properties:
+        durationSeconds:
+          type: number
+          multipleOf: 1
+          minimum: 3600
+          maximum: 604800
+      required:
+        - durationSeconds
+    Session:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        address:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        archiveUntil:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, archived, deleted]
+        messageCount:
+          type: number
+          multipleOf: 1
+          minimum: 0
+      required:
+        - sessionId
+        - address
+        - createdAt
+        - expiresAt
+        - archiveUntil
+        - status
+        - messageCount
+    MessageSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        senderName:
+          type: string
+        senderAddress:
+          type: string
+        subject:
+          type: string
+        preview:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        isRead:
+          type: boolean
+      required:
+        - id
+        - senderName
+        - senderAddress
+        - subject
+        - preview
+        - receivedAt
+        - isRead
+    Message:
+      allOf:
+        - $ref: "#/components/schemas/MessageSummary"
+        - type: object
+          properties:
+            textBody:
+              type: string
+            htmlBody:
+              type: ["string", "null"]
+          required:
+            - textBody
+            - htmlBody
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
